@@ -24,18 +24,14 @@ class OrderSerializer(serializers.ModelSerializer):
         products = validated_data.pop('products')
         instance = Order.objects.create(**validated_data)
         for product in products:
-            instance.meals.add(product)
+            instance.products.add(product)
 
         return instance
         
 
 class ProductSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=511)
-    author = serializers.CharField(max_length=511)
     description = serializers.CharField()
-    published_date = serializers.IntegerField()
-    rating = serializers.IntegerField()
-
 
     def create(self, validated_data):
         return Product.objects.create(**validated_data)

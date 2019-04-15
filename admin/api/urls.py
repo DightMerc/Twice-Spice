@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import ListUsersView, UserCreateView
 from .views import ListOrdersView, OrderCreateView
+from .views import UserUpdateView
 
 
 urlpatterns = [
@@ -8,4 +9,6 @@ urlpatterns = [
     path('users/create/', UserCreateView.as_view(), name="user-create"),
     path('orders/', ListOrdersView.as_view(), name="orders-all"),
     path('orders/create/', OrderCreateView.as_view(), name="order-create"),
+    path(r'^users/(?P<id>\d+)$/update/', UserUpdateView.as_view(),name="order-update"),
+    
 ]

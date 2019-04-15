@@ -53,10 +53,23 @@ class OrderCreateView(APIView):
         serializer = OrderSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             try:
-                user_created = serializer.save()
-                return Response({"success": "Order '{}' created successfully".format(user_created.title)}, status=status.HTTP_201_CREATED)
+                order_created = serializer.save()
+                return Response({"success": "Order created successfully"}, status=status.HTTP_201_CREATED)
             except IntegrityError as e:
                 return Response({"error": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-            
+class UserUpdateView(APIView):
+    def get_object(self, pk):
+        try:
+            return TelegramUser.objects.get(pk=pk)
+        except TelegramUser.DoesNotExist:
+            raise Http404
+
+    def patch(self, request, version, pk, format=None):
+        user = self.get_object(pk)
+        serializer = UsersSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
