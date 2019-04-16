@@ -45,6 +45,14 @@ class ListOrdersView(APIView):
         
         serializer = OrderSerializer(orders, many=True)
         return Response({"orders": serializer.data})
+
+    
+class ListProductView(APIView):
+    def get(self, request, version):
+        products = Product.objects.all()
+        
+        serializer = ProductSerializer(products, many=True)
+        return Response({"products": serializer.data})
     
 class OrderCreateView(APIView):
     def post(self, request, version):

@@ -21,9 +21,6 @@ class Product(models.Model):
 class Order(models.Model):
     user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE)
     published_date = models.DateTimeField(blank=True, null=True)
-    delivery = models.BooleanField(default=False)
-    latitude = models.IntegerField()
-    longitude = models.IntegerField()
 
     products = models.ManyToManyField(Product)
     
