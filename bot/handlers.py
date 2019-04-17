@@ -14,6 +14,8 @@ from client import Client
 import threading
 from telegram import ParseMode
 
+from emoji import emojize
+
 users_path = os.getcwd() + "\\Users\\"
 
 # Enable logging
@@ -139,11 +141,49 @@ def TextHandler(bot, update):
         orders.append("")
 
         if len(orders)<2:
+            orders = []
+            orders = os.listdir(users_path+str(user)+"\\Orders")
+            orders.append("")
+
+            count = len(orders) - 1
+            if count!=0:
+                double_text = " [{}]".format(count)
+            else:
+                double_text = ""
+
+            keyboard = [["Меню"],["Корзина"+double_text]]
+            markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
             text = "Ваша корзина пуста"
-            markup = ""
+            
+            message = bot.sendMessage(user, text, reply_markup = markup)
+            with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+                file.write(str(message.message_id)+"\n")
         else:
-            text = "Заказы в корзинке"
-            markup = ""
+
+            all_products = GetAllProducts()
+            titles = all_products[0]
+            description = all_products[1]
+
+            orders = []
+            orders = os.listdir(users_path+str(user)+"\\Orders")
+
+            button_list = []
+
+            for a in orders:
+                with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
+                    value = file.readlines()
+                    num = int(value[0].replace("\n",""))
+                    quan = int(value[1].replace("\n",""))
+        
+                    button_list.append(InlineKeyboardButton("{} - {}".format(titles[num-1],quan), callback_data="empty"))
+                    button_list.append(InlineKeyboardButton(emojize("❎"), callback_data="delete {}".format(str(a))))
+
+                    keyboard = build_menu(button_list, 2)
+                    markup = InlineKeyboardMarkup(keyboard)
+                    
+
+            text = "Ваша корзина"
 
         
         message = bot.sendMessage(user, text, reply_markup = markup)
@@ -167,7 +207,6 @@ def Start(bot, update):
         os.mkdir(users_path+str(user)+"\\Orders")
 
     text = "Привет! Это бот от Twice Spice! \n{}\n\n{}".format(config.description,"Давай подумаем, что можно сделать")
-
     
     orders = []
     orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -212,11 +251,80 @@ def ContactHandler(bot, update):
     pass
 
 
-@send_typing_action
+#@send_typing_action
 def InlineKeyboardHandler(bot, update):
     user = update.callback_query.from_user.id
     recieved_text = update.callback_query.data
 
+
+    if "empty" in recieved_text:
+        bot.answerCallbackQuery(update.callback_query.id)
+        return
+
+    if "delete " in recieved_text:
+        value = recieved_text.replace("delete ","")
+        os.remove(users_path+str(user)+"\\Orders\\"+str(value))
+
+        orders = []
+        orders = os.listdir(users_path+str(user)+"\\Orders")
+        orders.append("")
+
+        if len(orders)<2:
+            deleteTemp(bot, user)
+
+            orders = []
+            orders = os.listdir(users_path+str(user)+"\\Orders")
+            orders.append("")
+
+            count = len(orders) - 1
+            if count!=0:
+                double_text = " [{}]".format(count)
+            else:
+                double_text = ""
+
+            keyboard = [["Меню"],["Корзина"+double_text]]
+            markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+            text = "Ваша корзина пуста"
+            
+            message = bot.sendMessage(user, text, reply_markup = markup)
+            with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+                file.write(str(message.message_id)+"\n")
+
+        else:
+
+            all_products = GetAllProducts()
+            titles = all_products[0]
+            description = all_products[1]
+
+            orders = []
+            orders = os.listdir(users_path+str(user)+"\\Orders")
+
+            button_list = []
+
+            for a in orders:
+                with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
+                    value = file.readlines()
+                    num = int(value[0].replace("\n",""))
+                    quan = int(value[1].replace("\n",""))
+        
+                    button_list.append(InlineKeyboardButton("{} - {}".format(titles[num-1],quan), callback_data="empty"))
+                    button_list.append(InlineKeyboardButton(emojize("❎"), callback_data="delete {}".format(str(a))))
+
+                    keyboard = build_menu(button_list, 2)
+                    markup = InlineKeyboardMarkup(keyboard)
+                    
+
+            text = "Ваша корзина"
+
+        
+            message = bot.editMessageReplyMarkup(user, update.callback_query.message.message_id, reply_markup = markup)
+            with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+                file.write(str(message.message_id)+"\n")
+
+            return
+
+        
 
     if "prod " in recieved_text:
 
