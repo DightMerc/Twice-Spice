@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#Empty Project Bot from Dight with Love
+#Twice Spice Bot from Dight with Love
 
 from telegram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, RegexHandler,
@@ -18,17 +18,10 @@ import os
 from client import Client
 import threading
 
-from handlers import start, contact_handler, 
+from handlers import Start, ContactHandler, InlineKeyboardHandler, Error, TextHandler
 
 
-
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
-logger = logging.getLogger(__name__)
-
-
+users_path = os.getcwd() + "\\Users\\"
 
 
 def main():
@@ -44,15 +37,20 @@ def main():
 
     
     # log all errors
-    dispatcher.add_error_handler(error)
+    dispatcher.add_error_handler(Error)
 
     #Command Handler
-    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("start", Start))
 
     #Contact Handler
-    dispatcher.add_handler(MessageHandler(Filters.contact,contact_handler))
+    dispatcher.add_handler(MessageHandler(Filters.contact,ContactHandler))
 
+    #Inline Callback Handler
     dispatcher.add_handler(CallbackQueryHandler(InlineKeyboardHandler))
+
+
+    #Text Handler
+    dispatcher.add_handler(MessageHandler(Filters.text, TextHandler))
 
     # Start the Bot
     updater.start_polling()
