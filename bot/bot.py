@@ -5,7 +5,7 @@
 
 from telegram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, RegexHandler,
-                          ConversationHandler, CallbackQueryHandler)
+                          ConversationHandler, CallbackQueryHandler, PreCheckoutQueryHandler)
 
 import telegram
 
@@ -18,7 +18,7 @@ import os
 from client import Client
 import threading
 
-from handlers import Start, ContactHandler, InlineKeyboardHandler, Error, TextHandler
+from handlers import Start, ContactHandler, InlineKeyboardHandler, Error, TextHandler, LocationHandler, precheckout_callback, successful_payment_callback
 
 
 users_path = os.getcwd() + "\\Users\\"
@@ -48,6 +48,13 @@ def main():
     #Inline Callback Handler
     dispatcher.add_handler(CallbackQueryHandler(InlineKeyboardHandler))
 
+    dispatcher.add_handler(PreCheckoutQueryHandler(precheckout_callback))
+
+    updater.dispatcher.add_handler(MessageHandler(Filters.successful_payment, successful_payment_callback))
+
+
+
+    dispatcher.add_handler(MessageHandler(Filters.location, LocationHandler))
 
     #Text Handler
     dispatcher.add_handler(MessageHandler(Filters.text, TextHandler))

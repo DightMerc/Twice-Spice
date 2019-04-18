@@ -1,6 +1,6 @@
 from telegram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, RegexHandler,
-                          ConversationHandler, CallbackQueryHandler)
+                          ConversationHandler, CallbackQueryHandler, PreCheckoutQueryHandler, ShippingQueryHandler)
 
 import telegram
 
@@ -13,6 +13,9 @@ import os
 from client import Client
 import threading
 from telegram import ParseMode
+
+from telegram import LabeledPrice
+
 
 from emoji import emojize
 
@@ -109,7 +112,6 @@ def deleteTemp1(bot, user, num):
     try:
         with open(users_path+str(user)+"\\temp_id", "r", encoding="utf8") as file:
             value = file.readlines()
-            print(value)
 
             temp_id = int(value[int(num)].replace("\n",""))
             try:
@@ -133,40 +135,43 @@ def TextHandler(bot, update):
         bot.deleteMessage(user, update.message.message_id)
 
 
-        if os.path.exists(users_path + str(user)+"\\phone"):
+        if not os.path.exists(users_path + str(user)+"\\phone"):
+            text = "Для оформления заказа нам нужен твой номер телефона"
+
+            #location_keyboard = telegram.KeyboardButton(text="send_location", request_location=True)
+            contact_keyboard = telegram.KeyboardButton(text="Отправить контакт", request_contact=True)
+            custom_keyboard = [[ contact_keyboard ]]
+            markup = telegram.ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+            message = bot.sendMessage(user, text, reply_markup = markup)
+            with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+                file.write(str(message.message_id)+"\n")
+
+            return
+        else:
             pass
 
-        all_products = GetAllProducts()
-        titles = all_products[0]
-        description = all_products[1]
 
-        orders = []
-        orders = os.listdir(users_path+str(user)+"\\Orders")
+        
 
-        text = "Оплата:\n\n"
+        
 
-        for a in orders:
-            with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
-                value = file.readlines()
-                num = int(value[0].replace("\n",""))
-                quan = int(value[1].replace("\n",""))
-                cost = 50000
+        
 
-                position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
 
-                text = text + position
-                
+        text = "Cпособ получения товара"
 
-        keyboard = [[InlineKeyboardButton("Нал", callback_data="cash") , InlineKeyboardButton("Безнал", callback_data="card")],
+        keyboard = [[InlineKeyboardButton("Доставка", callback_data="delivery") , InlineKeyboardButton("Самовывоз", callback_data="self")],
                     [InlineKeyboardButton("Отмена", callback_data="cancel")]
                     ]
         markup = InlineKeyboardMarkup(keyboard)
 
-        
+        message = bot.sendMessage(user, text, reply_markup=markup)
 
-        message = bot.sendMessage(user, text, reply_markup = markup)
-        with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+        with open(users_path+str(user)+"\\temp_id", "a", encoding="utf8") as file:
             file.write(str(message.message_id)+"\n")
+
+        
 
         return
 
@@ -327,28 +332,64 @@ def Start(bot, update):
 
 @send_typing_action
 def ContactHandler(bot, update):
-    """
     user = update.message.from_user.id
     contact = update.message.contact
 
     if user!= contact.user_id:
-        bot.sendMessage(user, "К большому сожалению, нужно отправить именно свой номер :)")
+        text = "К большому сожалению, нужно отправить именно свой номер :)"
+        markup = ""
+        message = bot.sendMessage(user, text, reply_markup = markup)
+        with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+            file.write(str(message.message_id)+"\n")
+
+        return
     else:
 
-        file = open(users_path + str(user)+"\\phone_number.cfg","w")
-        file.write(contact.phone_number)
+        file = open(users_path + str(user)+"\\phone","w")
+        file.write(str(contact.phone_number).replace("+",""))
         file.close()
 
-        text = "Регистрация завершена. Теперь вы можете отправить контрольные данные для получения Ключа Активации"
+        all_products = GetAllProducts()
+        titles = all_products[0]
+        description = all_products[1]
 
-        keyboard = [[ "СТРЕЛЬНУТЬ" ]]
-        markup = telegram.ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        orders = []
+        orders = os.listdir(users_path+str(user)+"\\Orders")
 
-        bot.sendMessage(user, text, markup)
+        text = "Отлично! Теперь мы сможем с тобой связаться"
+
+        message = bot.sendMessage(user, text, reply_markup = markup)
+        with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+            file.write(str(message.message_id)+"\n")
+
+        text = "Оплата:\n\n"
+
+        for a in orders:
+            with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
+                value = file.readlines()
+                num = int(value[0].replace("\n",""))
+                quan = int(value[1].replace("\n",""))
+                cost = 50000
+
+                position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
+
+                text = text + position
+                
+
+        keyboard = [[InlineKeyboardButton("Нал", callback_data="cash") , InlineKeyboardButton("Безнал", callback_data="card")],
+                    [InlineKeyboardButton("Отмена", callback_data="cancel")]
+                    ]
+        markup = InlineKeyboardMarkup(keyboard)
+
+        
+
+        message = bot.sendMessage(user, text, reply_markup = markup)
+        with open(users_path+str(user)+"\\temp_id", "a", encoding="utf8") as file:
+            file.write(str(message.message_id)+"\n")
+
+        return
         
     return
-    """
-    pass
 
 
 def check(user):
@@ -430,7 +471,6 @@ def InlineKeyboardHandler(bot, update):
             message = bot.editMessageReplyMarkup(user, update.callback_query.message.message_id, reply_markup = markup)
             with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
                 file.write(str(message.message_id)+"\n")
-            print("delete msg")
             
             keyboard = [[ "Оформить заказ" ] , [ "Назад" ]]
             markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
@@ -449,19 +489,68 @@ def InlineKeyboardHandler(bot, update):
         with open(users_path+str(user)+"\\money", "w", encoding="utf8") as file:
             file.write("0")
 
-        text = "Cпособ получения товара"
+        with open(users_path+str(user)+"\\delivery", "r", encoding="utf8") as file:
+            value = file.read()
 
-        keyboard = [[InlineKeyboardButton("Доставка", callback_data="delivery") , InlineKeyboardButton("Самовывоз", callback_data="self")],
-                    [InlineKeyboardButton("Отмена", callback_data="cancel")]
-                    ]
-        markup = InlineKeyboardMarkup(keyboard)
+        if value == "0":
+            phrase = ""
+        else:
+            phrase = "и доставлен"
 
-        message = bot.sendMessage(user, text, reply_markup=markup)
+        text = "Вот и все. Заказ скоро будет готов {}".format(phrase)
+
+        bot.sendMessage(user, text)
+
+        text = "<b>Заказ</b>\n\n"
+
+        all_products = GetAllProducts()
+        titles = all_products[0]
+        description = all_products[1]
+
+
+        orders = []
+        orders = os.listdir(users_path+str(user)+"\\Orders")
+
+        for a in orders:
+            with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
+                value = file.readlines()
+                num = int(value[0].replace("\n",""))
+                quan = int(value[1].replace("\n",""))
+                cost = 50000
+
+                position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
+
+                text = text + position
+
+        markup = ""
+        message = bot.sendMessage(user, text, reply_markup=markup, parse_mode=ParseMode.HTML)
 
         with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
             file.write(str(message.message_id)+"\n")
 
+
+        text = "Выбери действие"
+
+
+        orders = []
+        orders = os.listdir(users_path+str(user)+"\\Orders")
+        orders.append("")
+
+        count = len(orders) - 1
+        if count!=0:
+            double_text = " [{}]".format(count)
+        else:
+            double_text = ""
+
+        keyboard = [["Меню"],["Корзина"+double_text]]
+        markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        
+        message = bot.sendMessage(user, text, reply_markup = markup)
+
+        with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+            file.write(str(message.message_id) +"\n")
         return
+
     
     if "card" in recieved_text:
         deleteTemp(bot, user)
@@ -469,19 +558,34 @@ def InlineKeyboardHandler(bot, update):
         with open(users_path+str(user)+"\\money", "w", encoding="utf8") as file:
             file.write("1")
 
-        text = "Cпособ получения товара"
+        #send_invoice(bot, update)
 
-        keyboard = [[InlineKeyboardButton("Доставка", callback_data="delivery") , InlineKeyboardButton("Самовывоз", callback_data="self")],
+        text = "Выбери платежную систему"
+
+        keyboard = [[InlineKeyboardButton("PayMe", callback_data="payme") , InlineKeyboardButton("Click", callback_data="click")],
                     [InlineKeyboardButton("Отмена", callback_data="cancel")]
                     ]
         markup = InlineKeyboardMarkup(keyboard)
 
-        message = bot.sendMessage(user, text, reply_markup=markup)
-
+        message = bot.sendMessage(user, text, reply_markup = markup)
         with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
             file.write(str(message.message_id)+"\n")
 
         return
+
+        return
+
+    if "payme" or "click" in recieved_text:
+        deleteTemp(bot, user)
+        payload = recieved_text
+
+        if payload=="payme":
+            provider_token = "371317599:TEST:667663564"
+        else:
+            provider_token = "398062629:TEST:999999999_F91D8F69C042267444B74CC0B3C747757EB0E065"
+
+        send_invoice(bot, update, provider_token)
+
 
     if "self" in recieved_text:
         deleteTemp(bot, user)
@@ -489,7 +593,16 @@ def InlineKeyboardHandler(bot, update):
         with open(users_path+str(user)+"\\delivery", "w", encoding="utf8") as file:
             file.write("0")
 
-        
+        text = "Выбери способ оплаты"
+
+        keyboard = [[InlineKeyboardButton("Нал", callback_data="cash") , InlineKeyboardButton("Безнал", callback_data="card")],
+                    [InlineKeyboardButton("Отмена", callback_data="cancel")]
+                    ]
+        markup = InlineKeyboardMarkup(keyboard)
+
+        message = bot.sendMessage(user, text, reply_markup = markup)
+        with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+            file.write(str(message.message_id)+"\n")
 
         return
 
@@ -499,7 +612,16 @@ def InlineKeyboardHandler(bot, update):
         with open(users_path+str(user)+"\\delivery", "w", encoding="utf8") as file:
             file.write("1")
 
-        text = "Отправь своё местоположение"
+        location_keyboard = telegram.KeyboardButton(text="Отправить геолокацию", request_location=True)
+        #contact_keyboard = telegram.KeyboardButton(text="Отправить контакт", request_contact=True)
+        custom_keyboard = [[ location_keyboard ]]
+        markup = telegram.ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True, one_time_keyboard=True)
+        text = "Отправь своё местоположение, чтобы мы знали куда везти"
+
+        message = bot.sendMessage(user, text, reply_markup=markup)
+
+        with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+            file.write(str(message.message_id)+"\n")
 
         return
 
@@ -621,7 +743,6 @@ def InlineKeyboardHandler(bot, update):
 
         orders = []
         orders = os.listdir(users_path+str(user)+"\\Orders")
-        print(orders)
         orders.append("")
 
         count = check(user)
@@ -679,7 +800,144 @@ def InlineKeyboardHandler(bot, update):
         bot.deleteMessage(user, update.message.message_id)
 
         return
+
+
+def send_invoice(bot, update, provider_token):
+
+    chat_id = update.callback_query.from_user.id
+
+    orders = []
+    orders = os.listdir(users_path+str(chat_id)+"\\Orders")
+
+    prices = []
+
+    all_products = GetAllProducts()
+    titles = all_products[0]
+
+    for a in orders:
+        with open(users_path+str(chat_id)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
+            value = file.readlines()
+            num = int(value[0].replace("\n",""))
+            quan = int(value[1].replace("\n",""))
+            cost = 50000
+
+            prices.append(LabeledPrice(str(quan) + " " + titles[num-1], cost * quan * 100))
+
+
+    title = "Оплата заказа"
+    description = "Сервис оплаты заказов Twice Spice"
+    # select a payload just for you to recognize its the donation from your bot
+    payload = str(chat_id)
+    # In order to get a provider_token see https://core.telegram.org/bots/payments#getting-a-token
+    start_parameter = "test-payment"
+    currency = "UZS"
+    # price in dollars
+    
+    
+    # price * 100 so as to include 2 d.p.
+
+    # optionally pass need_name=True, need_phone_number=True,
+    # need_email=True, need_shipping_address=True, is_flexible=True
+    bot.send_invoice(chat_id, title, description, payload,
+                             provider_token, start_parameter, currency, prices)
+
+    return
+
+
+def precheckout_callback(bot, update):
+    """Пречек оплаты"""
+    query = update.pre_checkout_query
+    user = update.pre_checkout_query.from_user.id
+
+    if query.invoice_payload != str(user):
+        print(query.invoice_payload)
+        print(user)
+        bot.answer_pre_checkout_query(pre_checkout_query_id=query.id, ok=False,
+                                      error_message="Что-то пошло не так")
+    else:
+        bot.answer_pre_checkout_query(pre_checkout_query_id=query.id, ok=True)
+
+def successful_payment_callback(self, bot, update):
+    with open(users_path+str(user)+"\\delivery", "r", encoding="utf8") as file:
+            value = file.read()
+
+    if value == "0":
+        phrase = ""
+    else:
+        phrase = "и доставлен"
+
+    text = "Вот и все. Заказ скоро будет готов {}".format(phrase)
+
+    bot.sendMessage(user, text)
+
+    text = "<b>Заказ</b>\n\n"
+
+    orders = []
+    orders = os.listdir(users_path+str(user)+"\\Orders")
+
+    for a in orders:
+        with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
+            value = file.readlines()
+            num = int(value[0].replace("\n",""))
+            quan = int(value[1].replace("\n",""))
+            cost = 50000
+
+            position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
+
+            text = text + position
+
+    markup = ""
+    message = bot.sendMessage(user, text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+    with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+        file.write(str(message.message_id)+"\n")
+
+
+    text = "Выбери действие"
+
+
+    orders = []
+    orders = os.listdir(users_path+str(user)+"\\Orders")
+    orders.append("")
+
+    count = len(orders) - 1
+    if count!=0:
+        double_text = " [{}]".format(count)
+    else:
+        double_text = ""
+
+    keyboard = [["Меню"],["Корзина"+double_text]]
+    markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    
+    message = bot.sendMessage(user, text, reply_markup = markup)
+
+    with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+        file.write(str(message.message_id) +"\n")
+    return
         
+def LocationHandler(bot, update):
+    user = update.message.from_user.id
+    location = update.message.location
+
+    longitude = location.longitude
+    latitude = location.latitude
+
+    with open(users_path+str(user)+"\\location", "w", encoding="utf8") as file:
+        file.write("{}\n{}\n".format(longitude, latitude))
+
+    markup = ""
+
+    text = "Отлично! Теперь выбери способ оплаты"
+    keyboard = [[InlineKeyboardButton("Нал", callback_data="cash") , InlineKeyboardButton("Безнал", callback_data="card")],
+                    [InlineKeyboardButton("Отмена", callback_data="cancel")]
+                    ]
+    markup = InlineKeyboardMarkup(keyboard)
+
+    message = bot.sendMessage(user, text, reply_markup = markup)
+    with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+        file.write(str(message.message_id)+"\n")
+
+    return
 
 
 def Error(bot, update, error):
