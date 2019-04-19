@@ -260,18 +260,21 @@ def TextHandler(bot, update):
 
             all_products = GetAllProducts()
             titles = all_products[0]
+            price = all_products[2]
 
             orders = []
             orders = os.listdir(users_path+str(user)+"\\Orders")
 
             button_list = []
+            total = 0
 
             for a in orders:
                 with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
                     value = file.readlines()
                     num = int(value[0].replace("\n",""))
                     quan = int(value[1].replace("\n",""))
-        
+                    total += quan*price[num-1]
+                            
                     button_list.append(InlineKeyboardButton("{} - {}".format(titles[num-1],quan), callback_data="empty"))
                     button_list.append(InlineKeyboardButton(emojize("❎"), callback_data="delete {}".format(str(a))))
 
@@ -288,7 +291,7 @@ def TextHandler(bot, update):
             keyboard = [[ "Оформить заказ"] , ["Назад"]]
             markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
-            text = "Общая стоимость: 50 000 сум"
+            text = "Общая стоимость: {} сум".format(total)
         
             message = bot.sendMessage(user, text, reply_markup = markup)
             with open(users_path+str(user)+"\\temp_id", "a", encoding="utf8") as file:
@@ -438,12 +441,15 @@ def InlineKeyboardHandler(bot, update):
             orders = os.listdir(users_path+str(user)+"\\Orders")
 
             button_list = []
+            total = 0
 
             for a in orders:
                 with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
                     value = file.readlines()
                     num = int(value[0].replace("\n",""))
                     quan = int(value[1].replace("\n",""))
+                    total += quan*price[num-1]
+                    
         
                     button_list.append(InlineKeyboardButton("{} - {}".format(titles[num-1],quan), callback_data="empty"))
                     button_list.append(InlineKeyboardButton(emojize("❎"), callback_data="delete {}".format(str(a))))
@@ -461,7 +467,7 @@ def InlineKeyboardHandler(bot, update):
             keyboard = [[ "Оформить заказ" ] , [ "Назад" ]]
             markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
-            text = "Общая стоимость: 50 000 сум"
+            text = "Общая стоимость: {} сум".format(total)
         
             message = bot.sendMessage(user, text, reply_markup = markup, disable_notification=True)
             with open(users_path+str(user)+"\\temp_id", "a", encoding="utf8") as file:
@@ -634,17 +640,21 @@ def InlineKeyboardHandler(bot, update):
             all_products = GetAllProducts()
             titles = all_products[0]
             description = all_products[1]
+            price = all_products[2]
 
             orders = []
             orders = os.listdir(users_path+str(user)+"\\Orders")
 
             button_list = []
 
+            total = 0
+
             for a in orders:
                 with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
                     value = file.readlines()
                     num = int(value[0].replace("\n",""))
                     quan = int(value[1].replace("\n",""))
+                    total = quan*price[num-1]
         
                     button_list.append(InlineKeyboardButton("{} - {}".format(titles[num-1],quan), callback_data="empty"))
                     button_list.append(InlineKeyboardButton(emojize("❎"), callback_data="delete {}".format(str(a))))
@@ -662,7 +672,7 @@ def InlineKeyboardHandler(bot, update):
             keyboard = [[ "Оформить заказ"] , ["Назад"]]
             markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
-            text = "Общая стоимость: 50 000 сум"
+            text = "Общая стоимость: {} сум".format(total)
         
             message = bot.sendMessage(user, text, reply_markup = markup)
             with open(users_path+str(user)+"\\temp_id", "a", encoding="utf8") as file:
@@ -812,13 +822,14 @@ def send_invoice(bot, update, provider_token):
 
     all_products = GetAllProducts()
     titles = all_products[0]
+    price = all_products[2]
 
     for a in orders:
         with open(users_path+str(chat_id)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
             value = file.readlines()
             num = int(value[0].replace("\n",""))
             quan = int(value[1].replace("\n",""))
-            cost = 50000
+            cost = int(price[num-1])
 
             prices.append(LabeledPrice(str(quan) + " " + titles[num-1], cost * quan * 100))
 
@@ -879,13 +890,14 @@ def successful_payment_callback(bot, update):
 
     products = GetAllProducts()
     titles = products[0]
+    price = products[2]
 
     for a in orders:
         with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
             value = file.readlines()
             num = int(value[0].replace("\n",""))
             quan = int(value[1].replace("\n",""))
-            cost = 50000
+            cost = int(price[num-1])
 
             position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
 
