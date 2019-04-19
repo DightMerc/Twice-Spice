@@ -15,6 +15,10 @@ class Product(models.Model):
     title = models.CharField("Название", max_length=511, default="", unique=False, null=False)
     description = models.TextField("Описание")
 
+    price = models.FloatField("Цена", default=0)
+
+    picture = models.ImageField(blank=True, null=True, upload_to="pictures/")
+
     def __str__(self):
         return str(self.title)
 

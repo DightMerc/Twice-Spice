@@ -32,6 +32,9 @@ class OrderSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=511)
     description = serializers.CharField()
+    price = serializers.FloatField()
+
+    picture = serializers.ImageField()
 
     def create(self, validated_data):
         return Product.objects.create(**validated_data)

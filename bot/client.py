@@ -72,10 +72,13 @@ class Order(object):
 
 class Product(object):
 
-    def __init__(self, title, description):
+    def __init__(self, title, description, price, picture):
         self.title = title
 
         if description!="description":
             self.description = description
         else:
             self.description = "Описание отсутствует"
+
+        self.price = price
+        self.picture = picture

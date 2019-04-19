@@ -7,6 +7,7 @@ import telegram
 import logging
 import config
 from functools import wraps
+import requests
 
 import datetime
 import os
@@ -58,13 +59,20 @@ def GetAllProducts():
 
     prod_title = []
     prod_description = []
+    prod_price = []
+    prod_image = []
+
     for a in products_payload:
         prod_title.append(a.title)
         prod_description.append(a.description)
+        prod_price.append(a.price)
+        prod_image.append(a.picture)
+
     
     product_list.append(prod_title)
     product_list.append(prod_description)
-
+    product_list.append(prod_price)
+    product_list.append(prod_image)
 
 
     return product_list
@@ -252,7 +260,6 @@ def TextHandler(bot, update):
 
             all_products = GetAllProducts()
             titles = all_products[0]
-            description = all_products[1]
 
             orders = []
             orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -349,45 +356,24 @@ def ContactHandler(bot, update):
         file.write(str(contact.phone_number).replace("+",""))
         file.close()
 
-        all_products = GetAllProducts()
-        titles = all_products[0]
-        description = all_products[1]
-
-        orders = []
-        orders = os.listdir(users_path+str(user)+"\\Orders")
 
         text = "Отлично! Теперь мы сможем с тобой связаться"
-
+        markup = ""
         message = bot.sendMessage(user, text, reply_markup = markup)
         with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
             file.write(str(message.message_id)+"\n")
 
-        text = "Оплата:\n\n"
+        text = "Cпособ получения товара"
 
-        for a in orders:
-            with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
-                value = file.readlines()
-                num = int(value[0].replace("\n",""))
-                quan = int(value[1].replace("\n",""))
-                cost = 50000
-
-                position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
-
-                text = text + position
-                
-
-        keyboard = [[InlineKeyboardButton("Нал", callback_data="cash") , InlineKeyboardButton("Безнал", callback_data="card")],
+        keyboard = [[InlineKeyboardButton("Доставка", callback_data="delivery") , InlineKeyboardButton("Самовывоз", callback_data="self")],
                     [InlineKeyboardButton("Отмена", callback_data="cancel")]
                     ]
         markup = InlineKeyboardMarkup(keyboard)
 
-        
+        message = bot.sendMessage(user, text, reply_markup=markup)
 
-        message = bot.sendMessage(user, text, reply_markup = markup)
         with open(users_path+str(user)+"\\temp_id", "a", encoding="utf8") as file:
             file.write(str(message.message_id)+"\n")
-
-        return
         
     return
 
@@ -406,7 +392,6 @@ def check(user):
 def InlineKeyboardHandler(bot, update):
     user = update.callback_query.from_user.id
     recieved_text = update.callback_query.data
-
 
     if "empty" in recieved_text:
         bot.answerCallbackQuery(update.callback_query.id)
@@ -447,6 +432,7 @@ def InlineKeyboardHandler(bot, update):
             all_products = GetAllProducts()
             titles = all_products[0]
             description = all_products[1]
+            price = all_products[2]
 
             orders = []
             orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -506,6 +492,7 @@ def InlineKeyboardHandler(bot, update):
         all_products = GetAllProducts()
         titles = all_products[0]
         description = all_products[1]
+        price = all_products[2]
 
 
         orders = []
@@ -516,7 +503,7 @@ def InlineKeyboardHandler(bot, update):
                 value = file.readlines()
                 num = int(value[0].replace("\n",""))
                 quan = int(value[1].replace("\n",""))
-                cost = 50000
+                cost = int(price[num-1])
 
                 position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
 
@@ -558,8 +545,6 @@ def InlineKeyboardHandler(bot, update):
         with open(users_path+str(user)+"\\money", "w", encoding="utf8") as file:
             file.write("1")
 
-        #send_invoice(bot, update)
-
         text = "Выбери платежную систему"
 
         keyboard = [[InlineKeyboardButton("PayMe", callback_data="payme") , InlineKeyboardButton("Click", callback_data="click")],
@@ -573,9 +558,8 @@ def InlineKeyboardHandler(bot, update):
 
         return
 
-        return
 
-    if "payme" or "click" in recieved_text:
+    if "payme" in recieved_text or "click" in recieved_text:
         deleteTemp(bot, user)
         payload = recieved_text
 
@@ -585,6 +569,8 @@ def InlineKeyboardHandler(bot, update):
             provider_token = "398062629:TEST:999999999_F91D8F69C042267444B74CC0B3C747757EB0E065"
 
         send_invoice(bot, update, provider_token)
+
+        return
 
 
     if "self" in recieved_text:
@@ -683,8 +669,6 @@ def InlineKeyboardHandler(bot, update):
                 file.write(str(message.message_id)+"\n")
 
             return
-
-        
     
 
     if "prod " in recieved_text:
@@ -695,15 +679,30 @@ def InlineKeyboardHandler(bot, update):
         all_products = GetAllProducts()
         titles = all_products[0]
         description = all_products[1]
+        price = all_products[2]
+        picture = all_products[3]
 
-        text = "<b>" + titles[product_number-1] + "</b>\n\n{}".format(description[product_number-1])+"\n\n<b>Цена: 50 000 сум</b>"
+
+        with open(users_path+str(user)+"\\temp_pic", 'wb') as handle:
+            response = requests.get(config.url1+str(picture[product_number-1])[1:], stream=True)
+
+            if not response.ok:
+                print(response)
+
+            for block in response.iter_content(1024):
+                if not block:
+                    break
+
+                handle.write(block)
+
+        text = "<b>" + titles[product_number-1] + "</b>\n\n{}".format(description[product_number-1])+"\n\n<b>Цена: {} сум</b>".format(price[product_number-1])
         
         keyboard = [[InlineKeyboardButton("Добавить в корзину", callback_data="add_to_cart " + str(product_number))],
                     [InlineKeyboardButton("Назад", callback_data="back_to_menu")]
                     ]
         markup = InlineKeyboardMarkup(keyboard)
 
-        message = bot.send_photo(chat_id=user, photo=open('roll.jpg', 'rb'), caption=text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        message = bot.send_photo(chat_id=user, photo=open(users_path+str(user)+"\\temp_pic", 'rb'), caption=text, reply_markup=markup, parse_mode=ParseMode.HTML)
         with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
             file.write(str(message.message_id)+"\n")
 
@@ -857,7 +856,10 @@ def precheckout_callback(bot, update):
     else:
         bot.answer_pre_checkout_query(pre_checkout_query_id=query.id, ok=True)
 
-def successful_payment_callback(self, bot, update):
+def successful_payment_callback(bot, update):
+
+    user = update.message.from_user.id    
+
     with open(users_path+str(user)+"\\delivery", "r", encoding="utf8") as file:
             value = file.read()
 
@@ -874,6 +876,9 @@ def successful_payment_callback(self, bot, update):
 
     orders = []
     orders = os.listdir(users_path+str(user)+"\\Orders")
+
+    products = GetAllProducts()
+    titles = products[0]
 
     for a in orders:
         with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
