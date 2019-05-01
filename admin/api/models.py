@@ -8,11 +8,25 @@ class TelegramUser(models.Model):
     phone = models.PositiveIntegerField("Phone Number", null=True)
 
     def __str__(self):
-        return str(self.phone)
+        return str(self.telegram_id)
+
+
+class Category(models.Model):
+    title = models.CharField("Название", max_length=511, default="", unique=False, null=False)
+    description = models.TextField("Описание")
+
+    picture = models.ImageField(blank=True, null=True, upload_to="pictures/")
+
+    class Meta:
+         verbose_name = "product type"
+
+    def __str__(self):
+        return str(self.title)
 
 
 class Product(models.Model):
     title = models.CharField("Название", max_length=511, default="", unique=False, null=False)
+    product_category = models.ForeignKey(Category, default="", on_delete=models.CASCADE)
     description = models.TextField("Описание")
 
     price = models.FloatField("Цена", default=0)
@@ -30,3 +44,4 @@ class Order(models.Model):
     
     def __str__(self):
         return str(self.user)
+

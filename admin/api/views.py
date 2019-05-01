@@ -3,10 +3,12 @@ from django.shortcuts import render
 from .models import TelegramUser
 from .models import Order
 from .models import Product
+from .models import Category
 
 from .serializers import UsersSerializer
 from .serializers import OrderSerializer
 from .serializers import ProductSerializer
+from .serializers import CategorySerializer
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,8 +16,6 @@ from rest_framework import status
 from rest_framework import generics
 
 from django.db import IntegrityError
-
-
 
 # Create your views here.
 
@@ -34,7 +34,7 @@ class UserCreateView(APIView):
         if serializer.is_valid(raise_exception=True):
             try:
                 user_created = serializer.save()
-                return Response({"success": "User '{}' created successfully".format(user_created.telegram_id)}, status=status.HTTP_201_CREATED)
+                return Response({"success": "{} User '{}' created successfully".format(user_created.id, user_created.telegram_id)}, status=status.HTTP_201_CREATED)
             except IntegrityError as e:
                 if "UNIQUE constraint failed" in str(e):
                     return Response({"error": "User already exists"}, status=status.HTTP_409_CONFLICT)
@@ -45,6 +45,14 @@ class ListOrdersView(APIView):
         
         serializer = OrderSerializer(orders, many=True)
         return Response({"orders": serializer.data})
+
+
+class ListCategoryView(APIView):
+    def get(self, request, version):
+        cats = Category.objects.all()
+        
+        serializer = CategorySerializer(cats, many=True)
+        return Response({"categories": serializer.data})
 
     
 class ListProductView(APIView):

@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import TelegramUser
 from .models import Order
 from .models import Product
+from .models import Category
+
 
 
 class UsersSerializer(serializers.Serializer):
@@ -13,6 +15,14 @@ class UsersSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return TelegramUser.objects.create(**validated_data)
+
+class CategorySerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=255)
+    description = serializers.CharField()
+    picture = serializers.ImageField()
+
+    def create(self, validated_data):
+        return Category.objects.create(**validated_data)
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -31,6 +41,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=511)
+    product_category = serializers.CharField()
     description = serializers.CharField()
     price = serializers.FloatField()
 

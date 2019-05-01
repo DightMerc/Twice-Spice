@@ -16,6 +16,7 @@ import threading
 from telegram import ParseMode
 
 from telegram import LabeledPrice
+import datetime
 
 
 from emoji import emojize
@@ -38,7 +39,14 @@ def CreateTelegramUser(user, full_name, username, phone):
     phone = str(phone).replace(" ","")
 
     cli = Client()
-    cli.CreateUser(user, full_name, username, phone)
+    answer = cli.CreateUser(user, full_name, username, phone)
+
+    answer = answer.replace("{'success': \"","")
+    value = answer.split()
+    usr_num = value[0]
+
+    with open(users_path+str(user)+"\\usr_num", "w", encoding="utf8") as file:
+        file.write(str(usr_num))
 
     return
 
@@ -58,25 +66,52 @@ def GetAllProducts():
     product_list = []
 
     prod_title = []
+    prod_cat = []
     prod_description = []
     prod_price = []
     prod_image = []
 
     for a in products_payload:
         prod_title.append(a.title)
+        prod_cat.append(a.product_category)
         prod_description.append(a.description)
         prod_price.append(a.price)
         prod_image.append(a.picture)
 
     
     product_list.append(prod_title)
+    product_list.append(prod_cat)
     product_list.append(prod_description)
     product_list.append(prod_price)
     product_list.append(prod_image)
 
 
     return product_list
+    
+def GetAllCats():
 
+    cli = Client()
+
+    cats_payload = cli.GetAllCats()
+
+    cat_list = []
+
+    cat_title = []
+    cat_description = []
+    cat_image = []
+
+    for a in cats_payload:
+        cat_title.append(a.title)
+        cat_description.append(a.description)
+        cat_image.append(a.picture)
+
+    
+    cat_list.append(cat_title)
+    cat_list.append(cat_description)
+    cat_list.append(cat_image)
+
+
+    return cat_list
 
 def send_typing_action(func):
 
@@ -158,12 +193,6 @@ def TextHandler(bot, update):
             return
         else:
             pass
-
-
-        
-
-        
-
         
 
 
@@ -210,23 +239,30 @@ def TextHandler(bot, update):
 
         return
 
+        
+
+        
 
     if "Меню" in recieved_text:
         deleteTemp(bot, user)
 
-        products = GetAllProducts()
-        titles = products[0]
+        cats = GetAllCats()
+        titles = cats[0]
 
         button_list = []
         
         a = 0
         while a<len(titles):
-            button_list.append(InlineKeyboardButton(titles[a], callback_data="prod " + str(a+1)))
+            button_list.append(InlineKeyboardButton(titles[a], callback_data="cat " + str(a+1)))
             a += 1
 
+        cancel_btn = InlineKeyboardButton("Назад", callback_data="tostart")
+        footer_btn = []
+        footer_btn.append(cancel_btn)
 
-        keyboard = build_menu(button_list, 2)
+        keyboard = build_menu(button_list, 2, None, footer_buttons=footer_btn)
         markup = InlineKeyboardMarkup(keyboard)
+        
 
         text = "Меню"
         
@@ -260,7 +296,7 @@ def TextHandler(bot, update):
 
             all_products = GetAllProducts()
             titles = all_products[0]
-            price = all_products[2]
+            price = all_products[3]
 
             orders = []
             orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -396,6 +432,56 @@ def InlineKeyboardHandler(bot, update):
     user = update.callback_query.from_user.id
     recieved_text = update.callback_query.data
 
+    if "cat " in recieved_text:
+        deleteTemp(bot, user)
+
+        catnum = int(recieved_text.replace("cat ",""))
+
+        products = GetAllProducts()
+        categories = GetAllCats()
+        cat_titles = categories[0]
+        cat_pictures = categories[2]
+        titles = products[0]
+        cats = products[1]
+        
+
+        button_list = []
+
+        a = 0
+        while a<len(titles):
+            if cats[a] == cat_titles[catnum-1]:
+                button_list.append(InlineKeyboardButton(titles[a], callback_data="prod " + str(a+1)))
+            a += 1
+
+        cancel_btn = InlineKeyboardButton("Назад", callback_data="back_to_menu")
+        footer_btn = []
+        footer_btn.append(cancel_btn)
+
+        with open(users_path+str(user)+"\\temp_pic", 'wb') as handle:
+            response = requests.get(config.url1+str(cat_pictures[catnum-1])[1:], stream=True)
+
+            if not response.ok:
+                print(response)
+
+            for block in response.iter_content(1024):
+                if not block:
+                    break
+
+                handle.write(block)
+
+        keyboard = build_menu(button_list, 2, None, footer_btn)
+
+
+        markup = InlineKeyboardMarkup(keyboard)
+
+        text = cat_titles[catnum-1]
+
+        message = bot.send_photo(chat_id=user, photo=open(users_path+str(user)+"\\temp_pic", 'rb'), caption=text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+            file.write(str(message.message_id)+"\n")
+
+        return
+
     if "empty" in recieved_text:
         bot.answerCallbackQuery(update.callback_query.id)
         return
@@ -434,8 +520,8 @@ def InlineKeyboardHandler(bot, update):
 
             all_products = GetAllProducts()
             titles = all_products[0]
-            description = all_products[1]
-            price = all_products[2]
+            description = all_products[2]
+            price = all_products[3]
 
             orders = []
             orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -495,31 +581,37 @@ def InlineKeyboardHandler(bot, update):
 
         text = "<b>Заказ</b>\n\n"
 
-        all_products = GetAllProducts()
-        titles = all_products[0]
-        description = all_products[1]
-        price = all_products[2]
-
-
         orders = []
         orders = os.listdir(users_path+str(user)+"\\Orders")
+
+        products = GetAllProducts()
+        titles = products[0]
+        price = products[3]
+        total = 0
 
         for a in orders:
             with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
                 value = file.readlines()
                 num = int(value[0].replace("\n",""))
                 quan = int(value[1].replace("\n",""))
-                cost = int(price[num-1])
+                cost = int(price[num-1]) * quan
+                total += cost
+
 
                 position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
 
                 text = text + position
+        
+        text = text + "\n<b>Общее:</b> {} сум".format(total)
+
 
         markup = ""
         message = bot.sendMessage(user, text, reply_markup=markup, parse_mode=ParseMode.HTML)
 
         with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
             file.write(str(message.message_id)+"\n")
+
+        CreateOrderPost(bot, user)
 
 
         text = "Выбери действие"
@@ -543,6 +635,8 @@ def InlineKeyboardHandler(bot, update):
         with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
             file.write(str(message.message_id) +"\n")
         return
+
+        
 
     
     if "card" in recieved_text:
@@ -639,8 +733,8 @@ def InlineKeyboardHandler(bot, update):
 
             all_products = GetAllProducts()
             titles = all_products[0]
-            description = all_products[1]
-            price = all_products[2]
+            description = all_products[2]
+            price = all_products[3]
 
             orders = []
             orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -688,9 +782,19 @@ def InlineKeyboardHandler(bot, update):
 
         all_products = GetAllProducts()
         titles = all_products[0]
-        description = all_products[1]
-        price = all_products[2]
-        picture = all_products[3]
+        category = all_products[1]
+        description = all_products[2]
+        price = all_products[3]
+        picture = all_products[4]
+
+        all_cats = GetAllCats()
+
+        cat_titles = all_cats[0]
+
+        for a in range(len(cat_titles)):
+            if category[product_number-1] == cat_titles[a]:
+                catnum = a + 1 
+                break
 
 
         with open(users_path+str(user)+"\\temp_pic", 'wb') as handle:
@@ -708,7 +812,7 @@ def InlineKeyboardHandler(bot, update):
         text = "<b>" + titles[product_number-1] + "</b>\n\n{}".format(description[product_number-1])+"\n\n<b>Цена: {} сум</b>".format(price[product_number-1])
         
         keyboard = [[InlineKeyboardButton("Добавить в корзину", callback_data="add_to_cart " + str(product_number))],
-                    [InlineKeyboardButton("Назад", callback_data="back_to_menu")]
+                    [InlineKeyboardButton("Назад", callback_data="cat " + str(catnum))]
                     ]
         markup = InlineKeyboardMarkup(keyboard)
 
@@ -723,7 +827,7 @@ def InlineKeyboardHandler(bot, update):
         product_number = int(recieved_text.replace("add_to_cart ",""))
         all_products = GetAllProducts()
         titles = all_products[0]
-        description = all_products[1]
+        description = all_products[2]
 
 
         button_list = []
@@ -787,18 +891,21 @@ def InlineKeyboardHandler(bot, update):
     if "back_to_menu" in recieved_text:
         deleteTemp(bot, user)
 
-        products = GetAllProducts()
-        titles = products[0]
+        cats = GetAllCats()
+        titles = cats[0]
 
         button_list = []
         
         a = 0
         while a<len(titles):
-            button_list.append(InlineKeyboardButton(titles[a], callback_data="prod " + str(a+1)))
+            button_list.append(InlineKeyboardButton(titles[a], callback_data="cat " + str(a+1)))
             a += 1
 
+        cancel_btn = InlineKeyboardButton("Назад", callback_data="tostart")
+        footer_btn = []
+        footer_btn.append(cancel_btn)
 
-        keyboard = build_menu(button_list, 2)
+        keyboard = build_menu(button_list, 2, None, footer_buttons=footer_btn)
         markup = InlineKeyboardMarkup(keyboard)
 
         text = "Меню"
@@ -806,10 +913,123 @@ def InlineKeyboardHandler(bot, update):
         message = bot.send_photo(chat_id=user, photo=open('menu.jpg', 'rb'), reply_markup=markup)
         with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
             file.write(str(message.message_id)+"\n")
-        bot.deleteMessage(user, update.message.message_id)
 
         return
 
+    if "tostart" in recieved_text:
+        deleteTemp(bot, user)
+
+        text = "Выбери действие"
+
+        orders = []
+        orders = os.listdir(users_path+str(user)+"\\Orders")
+        orders.append("")
+
+        count = len(orders) - 1
+        if count!=0:
+            double_text = " [{}]".format(count)
+        else:
+            double_text = ""
+
+        keyboard = [["Меню"],["Корзина"+double_text]]
+        markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        
+        message = bot.sendMessage(user, text, reply_markup = markup)
+        with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+            file.write(str(message.message_id)+"\n")
+        
+        
+        return
+
+        
+
+def CreateOrderPost(bot, user):
+
+    with open(os.getcwd()+"\\order_count","r",encoding="utf8") as file:
+        count = int(file.read())
+    with open(os.getcwd()+"\\order_count","w",encoding="utf8") as file:
+        file.write(str(count+1))
+    
+    text = "<b>Заказ № {}</b>\n\n".format(count)
+
+    orders = []
+    orders = os.listdir(users_path+str(user)+"\\Orders")
+
+    products = GetAllProducts()
+    titles = products[0]
+    price = products[3]
+
+    total = 0
+
+    with open(users_path+str(user)+"\\phone","r",encoding="utf8") as file:
+        phone = file.read().replace("\n","").replace("+","")
+    
+    with open(users_path+str(user)+"\\delivery","r",encoding="utf8") as file:
+        delivery = file.read().replace("\n","")
+        if int(delivery)!=0:
+            delivery_option = "доставка"
+        else:
+            delivery_option = "самовывоз"
+
+    with open(users_path+str(user)+"\\money","r",encoding="utf8") as file:
+        money = file.read().replace("\n","")
+        if int(money)!=0:
+            money_option = "PayMe & Click"
+
+        else:
+            money_option = "наличные"
+
+
+    product_array = []
+    for a in orders:
+        with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
+            value = file.readlines()
+            num = int(value[0].replace("\n",""))
+            quan = int(value[1].replace("\n",""))
+            total += int(price[num-1]) * quan
+            product_array.append(num)
+            position = "<b>{}</b> - {}\n".format(quan, titles[num-1])
+
+            text = text + position
+
+    line = "\n- - - - -\n\n"
+    text += line
+    text += "<b>Клиент:</b> +{}\n\n".format(phone)
+    text += "<b>Доставка:</b> {}\n".format(delivery_option)
+    text += "<b>Оплата:</b> {}\n".format(money_option)
+    text += line
+
+    text += "<b>Общее:</b> {} сум".format(total)
+
+    markup = ""
+    bot.sendMessage(config.channel, text, reply_markup=markup, parse_mode=ParseMode.HTML)
+    if int(delivery)!=0:
+        with open(users_path+str(user)+"\\location","r",encoding="utf8") as file:
+            location = file.readlines()
+            longitude = location[0]
+            latitude = location[1]
+        bot.sendLocation(config.channel, latitude, longitude)
+
+    time = datetime.datetime.now().replace(microsecond=0).isoformat()
+
+    with open(users_path+str(user)+"\\usr_num", "r", encoding="utf8") as file:
+        usr_num = file.read()
+
+    CreateOrder(usr_num, time, product_array)
+
+    orders = os.listdir(users_path+str(user)+"\\Orders\\")
+
+    for a in orders:
+        os.remove(users_path+str(user)+"\\Orders\\" + str(a))
+    
+    if os.path.exists(users_path+str(user)+"\\delivery"):
+        os.remove(users_path+str(user)+"\\delivery")
+    if os.path.exists(users_path+str(user)+"\\location"):
+        os.remove(users_path+str(user)+"\\location")
+    if os.path.exists(users_path+str(user)+"\\money"):
+        os.remove(users_path+str(user)+"\\money")
+
+    return
 
 def send_invoice(bot, update, provider_token):
 
@@ -822,7 +1042,9 @@ def send_invoice(bot, update, provider_token):
 
     all_products = GetAllProducts()
     titles = all_products[0]
-    price = all_products[2]
+    price = all_products[3]
+
+    total = 0
 
     for a in orders:
         with open(users_path+str(chat_id)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
@@ -830,6 +1052,7 @@ def send_invoice(bot, update, provider_token):
             num = int(value[0].replace("\n",""))
             quan = int(value[1].replace("\n",""))
             cost = int(price[num-1])
+            total += quan * cost
 
             prices.append(LabeledPrice(str(quan) + " " + titles[num-1], cost * quan * 100))
 
@@ -848,8 +1071,17 @@ def send_invoice(bot, update, provider_token):
 
     # optionally pass need_name=True, need_phone_number=True,
     # need_email=True, need_shipping_address=True, is_flexible=True
-    bot.send_invoice(chat_id, title, description, payload,
-                             provider_token, start_parameter, currency, prices)
+
+    keyboard = [[InlineKeyboardButton("Оплатить {} {}".format(total, currency), pay=True)],
+    [InlineKeyboardButton("Отмена", callback_data="cancel")]]
+
+    markup = InlineKeyboardMarkup(keyboard)
+
+    message = bot.send_invoice(chat_id, title, description, payload,
+                             provider_token, start_parameter, currency, prices, reply_markup = markup)
+
+    with open(users_path+str(chat_id)+"\\temp_id", "w", encoding="utf8") as file:
+        file.write(str(message.message_id)+"\n")
 
     return
 
@@ -860,8 +1092,6 @@ def precheckout_callback(bot, update):
     user = update.pre_checkout_query.from_user.id
 
     if query.invoice_payload != str(user):
-        print(query.invoice_payload)
-        print(user)
         bot.answer_pre_checkout_query(pre_checkout_query_id=query.id, ok=False,
                                       error_message="Что-то пошло не так")
     else:
@@ -890,24 +1120,31 @@ def successful_payment_callback(bot, update):
 
     products = GetAllProducts()
     titles = products[0]
-    price = products[2]
+    price = products[3]
+    total = 0
 
     for a in orders:
         with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
             value = file.readlines()
             num = int(value[0].replace("\n",""))
             quan = int(value[1].replace("\n",""))
-            cost = int(price[num-1])
+            cost = int(price[num-1]) * quan
+            total += cost
+
 
             position = "{} - {}: {} сум\n".format(quan, titles[num-1], cost)
 
             text = text + position
+    
+    text = text + "\n<b>Общее:</b> {} сум".format(total)
 
     markup = ""
     message = bot.sendMessage(user, text, reply_markup=markup, parse_mode=ParseMode.HTML)
 
     with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
         file.write(str(message.message_id)+"\n")
+
+    CreateOrderPost(bot, user)
 
 
     text = "Выбери действие"

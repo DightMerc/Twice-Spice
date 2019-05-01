@@ -14,8 +14,8 @@ class Client(object):
         headers = {'Content-Type': 'application/json'}
 
         r = requests.post(url + "api/v2/users/create/", data=json.dumps(usr.__dict__), headers=headers)
-        print(str(r.status_code))
-        return str(r.status_code)
+        print(r.status_code)
+        return str(r.json())
 
     def CreateOrder(self, user, published_date, products):
         bk = Order(user=user, published_date=published_date, products=products)
@@ -41,10 +41,24 @@ class Client(object):
 
     def GetAllUsers(self):
         r = requests.get(url + 'api/v2/users/')
-        r.status_code
+        print(r.status_code)
 
         return(r.json())
 
+    def GetAllCats(self):
+        r = requests.get(url + 'api/v2/cats/')
+        print(r.status_code)
+
+        cats = r.json()
+
+        array_to_return = []
+
+        cats = cats['categories']
+        for a in cats:
+            new = Payload(json.dumps(a))
+            array_to_return.append(new)
+
+        return(array_to_return)
 
 class Payload(object):
     def __init__(self, j):
@@ -61,6 +75,14 @@ class User(object):
         else:
             self.username = ""
         self.phone = phone
+
+
+class Category(object):
+
+    def __init__(self, title, description, picture):
+        self.title = title
+        self.description = description
+        self.picture = picture
         
 
 class Order(object):
@@ -72,8 +94,9 @@ class Order(object):
 
 class Product(object):
 
-    def __init__(self, title, description, price, picture):
+    def __init__(self, title, catproduct_category, description, price, picture):
         self.title = title
+        self.product_category = product_category
 
         if description!="description":
             self.description = description
