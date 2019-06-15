@@ -19,6 +19,10 @@ from django.db import IntegrityError
 
 # Create your views here.
 
+
+def base(request):
+    return render(request, 'api/index.html', {})
+
 class ListUsersView(APIView):
     def get(self, request, version):
         users = TelegramUser.objects.all()

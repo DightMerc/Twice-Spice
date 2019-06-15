@@ -94,7 +94,7 @@ class Order(object):
 
 class Product(object):
 
-    def __init__(self, title, catproduct_category, description, price, picture):
+    def __init__(self, title, product_category, description, price, picture):
         self.title = title
         self.product_category = product_category
 

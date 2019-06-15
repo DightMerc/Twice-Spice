@@ -1,3 +1,7 @@
 {
-    "python.pythonPath": "venv\\Scripts\\python.exe"
+    "python.pythonPath": "venv\\Scripts\\python.exe",
+    "vscode_custom_css.imports": [
+    ],
+    "vscode_custom_css.policy": true,
+    
 }

@@ -173,6 +173,74 @@ def TextHandler(bot, update):
 
     #bot.deleteMessage(user, update.message.message_id)
 
+    if "Отмена" in recieved_text:
+        deleteTemp(bot, user)
+        bot.deleteMessage(user, update.message.message_id)
+
+        orders = []
+        orders = os.listdir(users_path+str(user)+"\\Orders")
+        orders.append("")
+
+        if len(orders)<2:
+
+            keyboard = [["Меню"],["Корзина"]]
+            markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+            text = "Твоя корзина пуста"
+            
+            message = bot.sendMessage(user, text, reply_markup = markup)
+            with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+                file.write(str(message.message_id)+"\n")
+
+            return
+        else:
+
+            all_products = GetAllProducts()
+            titles = all_products[0]
+            description = all_products[2]
+            price = all_products[3]
+
+            orders = []
+            orders = os.listdir(users_path+str(user)+"\\Orders")
+
+            button_list = []
+
+            total = 0
+
+            for a in orders:
+                with open(users_path+str(user)+"\\Orders\\"+str(a),"r",encoding="utf8") as file:
+                    value = file.readlines()
+                    num = int(value[0].replace("\n",""))
+                    quan = int(value[1].replace("\n",""))
+                    total = quan*price[num-1]
+        
+                    button_list.append(InlineKeyboardButton("{} - {}".format(titles[num-1],quan), callback_data="empty"))
+                    button_list.append(InlineKeyboardButton(emojize("❎"), callback_data="delete {}".format(str(a))))
+
+            keyboard = build_menu(button_list, 2)
+            markup = InlineKeyboardMarkup(keyboard)
+                    
+
+            text = "Твоя корзина"
+        
+            message = bot.sendMessage(user, text, reply_markup = markup)
+            with open(users_path+str(user)+"\\temp_id", "w", encoding="utf8") as file:
+                file.write(str(message.message_id)+"\n")
+        
+            keyboard = [[ "Оформить заказ"] , ["Назад"]]
+            markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+            text = "Общая стоимость: {} сум".format(total)
+        
+            message = bot.sendMessage(user, text, reply_markup = markup)
+            with open(users_path+str(user)+"\\temp_id", "a", encoding="utf8") as file:
+                file.write(str(message.message_id)+"\n")
+
+            return
+
+
+
+
     if  "Оформить заказ" in recieved_text:
         deleteTemp(bot, user)
         bot.deleteMessage(user, update.message.message_id)
@@ -183,7 +251,7 @@ def TextHandler(bot, update):
 
             #location_keyboard = telegram.KeyboardButton(text="send_location", request_location=True)
             contact_keyboard = telegram.KeyboardButton(text="Отправить контакт", request_contact=True)
-            custom_keyboard = [[ contact_keyboard ]]
+            custom_keyboard = [[ contact_keyboard ], [ "Отмена" ]]
             markup = telegram.ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True, one_time_keyboard=True)
 
             message = bot.sendMessage(user, text, reply_markup = markup)
@@ -349,7 +417,7 @@ def Start(bot, update):
     if not os.path.exists(users_path+str(user)+"\\Orders"):
         os.mkdir(users_path+str(user)+"\\Orders")
 
-    text = "Привет! Это бот от Twice Spice! \n{}\n\n{}".format(config.description,"Давай подумаем, что можно сделать")
+    text = "Привет! Это бот от Twice Spice! (TEST MODE!) \n{}\n\n{}".format(config.description,"Давай подумаем, что можно сделать")
     markup = ""
 
     bot.sendMessage(user, text, reply_markup = markup)
@@ -579,7 +647,7 @@ def InlineKeyboardHandler(bot, update):
 
         bot.sendMessage(user, text)
 
-        text = "<b>Заказ</b>\n\n"
+        text = "<b>Заказ<\\b>\n\n"
 
         orders = []
         orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -602,7 +670,7 @@ def InlineKeyboardHandler(bot, update):
 
                 text = text + position
         
-        text = text + "\n<b>Общее:</b> {} сум".format(total)
+        text = text + "\n<b>Общее:<\\b> {} сум".format(total)
 
 
         markup = ""
@@ -645,9 +713,13 @@ def InlineKeyboardHandler(bot, update):
         with open(users_path+str(user)+"\\money", "w", encoding="utf8") as file:
             file.write("1")
 
-        text = "Выбери платежную систему"
+        text = "Выбери действие"
 
-        keyboard = [[InlineKeyboardButton("PayMe", callback_data="payme") , InlineKeyboardButton("Click", callback_data="click")],
+        # keyboard = [[InlineKeyboardButton("PayMe", callback_data="payme") , InlineKeyboardButton("Click", callback_data="click")],
+        #             [InlineKeyboardButton("Отмена", callback_data="cancel")]
+        #             ]
+
+        keyboard = [[InlineKeyboardButton("PayMe", callback_data="payme")],
                     [InlineKeyboardButton("Отмена", callback_data="cancel")]
                     ]
         markup = InlineKeyboardMarkup(keyboard)
@@ -664,9 +736,9 @@ def InlineKeyboardHandler(bot, update):
         payload = recieved_text
 
         if payload=="payme":
-            provider_token = "371317599:TEST:667663564"
+            provider_token = config.payme
         else:
-            provider_token = "398062629:TEST:999999999_F91D8F69C042267444B74CC0B3C747757EB0E065"
+            provider_token = config.click
 
         send_invoice(bot, update, provider_token)
 
@@ -809,7 +881,7 @@ def InlineKeyboardHandler(bot, update):
 
                 handle.write(block)
 
-        text = "<b>" + titles[product_number-1] + "</b>\n\n{}".format(description[product_number-1])+"\n\n<b>Цена: {} сум</b>".format(price[product_number-1])
+        text = "<b>" + titles[product_number-1] + "<\\b>\n\n{}".format(description[product_number-1])+"\n\n<b>Цена: {} сум<\\b>".format(price[product_number-1])
         
         keyboard = [[InlineKeyboardButton("Добавить в корзину", callback_data="add_to_cart " + str(product_number))],
                     [InlineKeyboardButton("Назад", callback_data="cat " + str(catnum))]
@@ -950,7 +1022,7 @@ def CreateOrderPost(bot, user):
     with open(os.getcwd()+"\\order_count","w",encoding="utf8") as file:
         file.write(str(count+1))
     
-    text = "<b>Заказ № {}</b>\n\n".format(count)
+    text = "<b>Заказ № {}<\\b>\n\n".format(count)
 
     orders = []
     orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -988,18 +1060,18 @@ def CreateOrderPost(bot, user):
             quan = int(value[1].replace("\n",""))
             total += int(price[num-1]) * quan
             product_array.append(num)
-            position = "<b>{}</b> - {}\n".format(quan, titles[num-1])
+            position = "<b>{}<\\b> - {}\n".format(quan, titles[num-1])
 
             text = text + position
 
     line = "\n- - - - -\n\n"
     text += line
-    text += "<b>Клиент:</b> +{}\n\n".format(phone)
-    text += "<b>Доставка:</b> {}\n".format(delivery_option)
-    text += "<b>Оплата:</b> {}\n".format(money_option)
+    text += "<b>Клиент:<\\b> +{}\n\n".format(phone)
+    text += "<b>Доставка:<\\b> {}\n".format(delivery_option)
+    text += "<b>Оплата:<\\b> {}\n".format(money_option)
     text += line
 
-    text += "<b>Общее:</b> {} сум".format(total)
+    text += "<b>Общее:<\\b> {} сум".format(total)
 
     markup = ""
     bot.sendMessage(config.channel, text, reply_markup=markup, parse_mode=ParseMode.HTML)
@@ -1061,7 +1133,7 @@ def send_invoice(bot, update, provider_token):
     description = "Сервис оплаты заказов Twice Spice"
     # select a payload just for you to recognize its the donation from your bot
     payload = str(chat_id)
-    # In order to get a provider_token see https://core.telegram.org/bots/payments#getting-a-token
+    # In order to get a provider_token see https:\\\\core.telegram.org\\bots\\payments#getting-a-token
     start_parameter = "test-payment"
     currency = "UZS"
     # price in dollars
@@ -1113,7 +1185,7 @@ def successful_payment_callback(bot, update):
 
     bot.sendMessage(user, text)
 
-    text = "<b>Заказ</b>\n\n"
+    text = "<b>Заказ<\\b>\n\n"
 
     orders = []
     orders = os.listdir(users_path+str(user)+"\\Orders")
@@ -1136,7 +1208,7 @@ def successful_payment_callback(bot, update):
 
             text = text + position
     
-    text = text + "\n<b>Общее:</b> {} сум".format(total)
+    text = text + "\n<b>Общее:<\\b> {} сум".format(total)
 
     markup = ""
     message = bot.sendMessage(user, text, reply_markup=markup, parse_mode=ParseMode.HTML)

@@ -3,7 +3,7 @@ from .views import ListUsersView, UserCreateView
 from .views import ListOrdersView, OrderCreateView
 from .views import UserUpdateView, ListProductView
 from .views import ListCategoryView
-
+from .views import base
 urlpatterns = [
     path('users/', ListUsersView.as_view(), name="users-all"),
     path('users/create/', UserCreateView.as_view(), name="user-create"),
@@ -12,5 +12,6 @@ urlpatterns = [
     path('orders/create/', OrderCreateView.as_view(), name="order-create"),
     path(r'^users/(?P<id>\d+)$/update/', UserUpdateView.as_view(),name="order-update"),
     path('cats/', ListCategoryView.as_view(), name="cats-all"),
+    path('', base, name='base_view'),
     
 ]
