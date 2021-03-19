@@ -6,7 +6,7 @@ chardet==3.0.4
 colorama==0.4.1
 cryptography==2.6.1
 Django==2.1.7
-djangorestframework==3.9.2
+djangorestframework==3.11.2
 emoji==0.5.1
 future==0.17.1
 idna==2.8
